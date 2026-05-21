@@ -52,7 +52,8 @@ export async function PATCH(request: NextRequest) {
   if (body.ai) {
     const { error } = await supabase
       .from("ai_settings")
-      .update({
+      .upsert({
+        id: 1,
         provider: body.ai.provider,
         api_key: body.ai.api_key,
         base_url: body.ai.base_url || null,
@@ -71,7 +72,7 @@ export async function PATCH(request: NextRequest) {
     const hash = await hashPassword(body.dashboard.password);
     const { error } = await supabase
       .from("dashboard_settings")
-      .update({ password_hash: hash })
+      .upsert({ id: 1, password_hash: hash })
       .eq("id", 1);
 
     if (error) {
@@ -82,7 +83,8 @@ export async function PATCH(request: NextRequest) {
   if (body.whatsapp) {
     const { error } = await supabase
       .from("whatsapp_settings")
-      .update({
+      .upsert({
+        id: 1,
         access_token: body.whatsapp.access_token,
         phone_number_id: body.whatsapp.phone_number_id,
         webhook_verify_token: body.whatsapp.webhook_verify_token,
