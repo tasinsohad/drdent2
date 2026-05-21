@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendWhatsAppMessage, verifyWebhookToken } from "@/lib/whatsapp";
 import { getAIResponse } from "@/lib/ai/client";
 
 export async function GET(request: NextRequest) {
@@ -9,10 +9,7 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  if (
-    mode === "subscribe" &&
-    token === process.env.WEBHOOK_VERIFY_TOKEN
-  ) {
+  if (mode === "subscribe" && token && (await verifyWebhookToken(token))) {
     return new NextResponse(challenge, { status: 200 });
   }
 

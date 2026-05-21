@@ -37,6 +37,16 @@ create table if not exists dashboard_settings (
   constraint single_row check (id = 1)
 );
 
+-- Create WhatsApp settings table (single row)
+create table if not exists whatsapp_settings (
+  id integer primary key default 1,
+  access_token text not null default '',
+  phone_number_id text not null default '',
+  webhook_verify_token text not null default '',
+  connected boolean not null default false,
+  constraint single_row check (id = 1)
+);
+
 -- Indexes
 create index if not exists idx_messages_conversation on messages(conversation_id);
 create index if not exists idx_conversations_updated on conversations(updated_at desc);
@@ -44,3 +54,8 @@ create index if not exists idx_conversations_updated on conversations(updated_at
 -- Enable realtime
 alter publication supabase_realtime add table conversations;
 alter publication supabase_realtime add table messages;
+
+-- Insert initial settings rows (if not exists)
+insert into ai_settings (id) values (1) on conflict (id) do nothing;
+insert into dashboard_settings (id) values (1) on conflict (id) do nothing;
+insert into whatsapp_settings (id) values (1) on conflict (id) do nothing;

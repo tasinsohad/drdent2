@@ -15,8 +15,17 @@ export async function GET() {
     .select("password_hash")
     .single();
 
+  const { data: whatsappSettings } = await supabase
+    .from("whatsapp_settings")
+    .select("*")
+    .single();
+
   const maskedKey = aiSettings?.api_key
     ? aiSettings.api_key.slice(0, 8) + "..." + aiSettings.api_key.slice(-4)
+    : "";
+
+  const maskedToken = whatsappSettings?.access_token
+    ? "••••••••" + whatsappSettings.access_token.slice(-4)
     : "";
 
   return NextResponse.json({
@@ -26,6 +35,12 @@ export async function GET() {
     },
     dashboard: {
       has_password: !!dashboardSettings?.password_hash,
+    },
+    whatsapp: {
+      phone_number_id: whatsappSettings?.phone_number_id || "",
+      access_token_masked: maskedToken,
+      webhook_verify_token: whatsappSettings?.webhook_verify_token || "",
+      connected: whatsappSettings?.connected || false,
     },
   });
 }
@@ -57,6 +72,21 @@ export async function PATCH(request: NextRequest) {
     const { error } = await supabase
       .from("dashboard_settings")
       .update({ password_hash: hash })
+      .eq("id", 1);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  if (body.whatsapp) {
+    const { error } = await supabase
+      .from("whatsapp_settings")
+      .update({
+        access_token: body.whatsapp.access_token,
+        phone_number_id: body.whatsapp.phone_number_id,
+        webhook_verify_token: body.whatsapp.webhook_verify_token,
+      })
       .eq("id", 1);
 
     if (error) {
