@@ -55,6 +55,7 @@ export default function SettingsPage() {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
+        console.log("Settings loaded:", data);
         setSettings(data.ai);
         setWhatsapp(data.whatsapp);
         setHasPassword(data.dashboard?.has_password);
@@ -63,7 +64,10 @@ export default function SettingsPage() {
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error("Failed to load settings:", err);
+        setLoading(false);
+      });
   }, []);
 
   async function handleFetchModels() {
@@ -135,13 +139,18 @@ export default function SettingsPage() {
         body: JSON.stringify({ whatsapp }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        setMessage({ type: "error", text: "Failed to save WhatsApp settings" });
+        setMessage({ type: "error", text: data.error || "Failed to save WhatsApp settings" });
         return;
       }
 
       setMessage({ type: "success", text: "WhatsApp settings saved successfully" });
-    } catch {
+      fetch("/api/settings")
+        .then((r) => r.json())
+        .then((d) => setWhatsapp(d.whatsapp));
+    } catch (e) {
       setMessage({ type: "error", text: "Failed to save WhatsApp settings" });
     } finally {
       setSaving(false);

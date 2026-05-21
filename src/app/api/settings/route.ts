@@ -5,7 +5,7 @@ import { hashPassword } from "@/lib/auth";
 export async function GET() {
   const supabase = getSupabaseServer();
 
-  const { data: aiSettings } = await supabase
+  const { data: aiSettings, error: aiError } = await supabase
     .from("ai_settings")
     .select("*")
     .single();
@@ -15,10 +15,13 @@ export async function GET() {
     .select("password_hash")
     .single();
 
-  const { data: whatsappSettings } = await supabase
+  const { data: whatsappSettings, error: whatsappError } = await supabase
     .from("whatsapp_settings")
     .select("*")
     .single();
+
+  if (aiError) console.error("ai_settings error:", aiError);
+  if (whatsappError) console.error("whatsapp_settings error:", whatsappError);
 
   const maskedKey = aiSettings?.api_key
     ? aiSettings.api_key.slice(0, 8) + "..." + aiSettings.api_key.slice(-4)
@@ -50,7 +53,7 @@ export async function PATCH(request: NextRequest) {
   const supabase = getSupabaseServer();
 
   if (body.ai) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("ai_settings")
       .upsert({
         id: 1,
@@ -61,27 +64,33 @@ export async function PATCH(request: NextRequest) {
         system_prompt: body.ai.system_prompt,
         context_window_days: body.ai.context_window_days,
       })
-      .eq("id", 1);
+      .select()
+      .single();
 
     if (error) {
+      console.error("ai_settings upsert error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    console.log("ai_settings saved:", data);
   }
 
   if (body.dashboard?.password) {
     const hash = await hashPassword(body.dashboard.password);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("dashboard_settings")
       .upsert({ id: 1, password_hash: hash })
-      .eq("id", 1);
+      .select()
+      .single();
 
     if (error) {
+      console.error("dashboard_settings upsert error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    console.log("dashboard_settings saved:", data);
   }
 
   if (body.whatsapp) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("whatsapp_settings")
       .upsert({
         id: 1,
@@ -89,11 +98,14 @@ export async function PATCH(request: NextRequest) {
         phone_number_id: body.whatsapp.phone_number_id,
         webhook_verify_token: body.whatsapp.webhook_verify_token,
       })
-      .eq("id", 1);
+      .select()
+      .single();
 
     if (error) {
+      console.error("whatsapp_settings upsert error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    console.log("whatsapp_settings saved:", data);
   }
 
   return NextResponse.json({ success: true });
