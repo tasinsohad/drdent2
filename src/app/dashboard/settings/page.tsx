@@ -586,7 +586,9 @@ export default function SettingsPage() {
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-sm font-medium text-gray-700 mb-1">Webhook URL</p>
               <code className="text-xs text-gray-600 break-all">
-                {typeof window !== "undefined" ? window.location.origin : "YOUR_URL"}/api/webhook
+                {typeof window !== "undefined"
+                  ? window.location.origin + "/api/webhook"
+                  : "https://drdent2.vercel.app/api/webhook"}
               </code>
               <p className="text-xs text-gray-500 mt-2">
                 Use this URL in Meta for Developers → WhatsApp → Configuration

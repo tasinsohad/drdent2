@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = getSupabaseServer();
 
   const { data: whatsappSettings } = await supabase
@@ -9,7 +9,9 @@ export async function GET() {
     .select("*")
     .single();
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://drdent2.vercel.app";
+  const appUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_APP_URL || "https://drdent2.vercel.app";
 
   return NextResponse.json({
     webhook_url: `${appUrl}/api/webhook`,
