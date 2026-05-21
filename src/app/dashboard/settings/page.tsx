@@ -1,0 +1,393 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Save,
+  Eye,
+  EyeOff,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  MessageCircle,
+} from "lucide-react";
+import { PROVIDERS, type ProviderType } from "@/lib/ai/providers";
+
+interface AISettings {
+  provider: string;
+  api_key: string;
+  base_url: string | null;
+  model: string;
+  system_prompt: string;
+  context_window_days: number;
+}
+
+export default function SettingsPage() {
+  const router = useRouter();
+  const [settings, setSettings] = useState<AISettings | null>(null);
+  const [hasPassword, setHasPassword] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        setSettings(data.ai);
+        setHasPassword(data.dashboard?.has_password);
+        if (data.ai?.model) {
+          setModels([data.ai.model]);
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleFetchModels() {
+    if (!settings) return;
+    setFetchingModels(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/ai/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: settings.provider,
+          api_key: settings.api_key,
+          base_url: settings.base_url || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error });
+        return;
+      }
+
+      setModels(data.models.map((m: any) => m.id));
+      setMessage({ type: "success", text: `Found ${data.models.length} models` });
+    } catch {
+      setMessage({ type: "error", text: "Failed to fetch models" });
+    } finally {
+      setFetchingModels(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!settings) return;
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai: settings }),
+      });
+
+      if (!res.ok) {
+        setMessage({ type: "error", text: "Failed to save settings" });
+        return;
+      }
+
+      setMessage({ type: "success", text: "Settings saved successfully" });
+    } catch {
+      setMessage({ type: "error", text: "Failed to save settings" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePasswordSave() {
+    if (!newPassword) return;
+    setSaving(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dashboard: { password: newPassword } }),
+      });
+
+      if (!res.ok) {
+        setMessage({ type: "error", text: "Failed to update password" });
+        return;
+      }
+
+      setNewPassword("");
+      setHasPassword(true);
+      setMessage({ type: "success", text: "Password updated" });
+    } catch {
+      setMessage({ type: "error", text: "Failed to update password" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto p-6">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </button>
+
+        <h1 className="text-2xl font-bold text-gray-900 mb-8">Settings</h1>
+
+        {message && (
+          <div
+            className={`flex items-center gap-2 p-4 rounded-lg mb-6 ${
+              message.type === "success"
+                ? "bg-green-50 text-green-700"
+                : "bg-red-50 text-red-700"
+            }`}
+          >
+            {message.type === "success" ? (
+              <CheckCircle className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+            {message.text}
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-green-600" />
+            AI Configuration
+          </h2>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Provider
+              </label>
+              <select
+                value={settings?.provider || "openrouter"}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          provider: e.target.value,
+                          base_url: PROVIDERS[e.target.value as ProviderType]
+                            ?.defaultBaseUrl,
+                        }
+                      : s
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {Object.entries(PROVIDERS).map(([key, val]) => (
+                  <option key={key} value={key}>
+                    {val.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                API Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showKey ? "text" : "password"}
+                  value={settings?.api_key || ""}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s ? { ...s, api_key: e.target.value } : s
+                    )
+                  }
+                  placeholder="Enter your API key"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showKey ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Base URL
+              </label>
+              <input
+                type="text"
+                value={settings?.base_url || ""}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, base_url: e.target.value } : s
+                  )
+                }
+                placeholder={
+                  PROVIDERS[settings?.provider as ProviderType]?.defaultBaseUrl
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Model
+                </label>
+                <button
+                  onClick={handleFetchModels}
+                  disabled={fetchingModels || !settings?.api_key}
+                  className="text-sm text-green-600 hover:text-green-700 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {fetchingModels ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : null}
+                  {fetchingModels ? "Fetching..." : "Fetch Models"}
+                </button>
+              </div>
+              <select
+                value={settings?.model || ""}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, model: e.target.value } : s
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {models.length > 0 ? (
+                  models.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))
+                ) : (
+                  <option value={settings?.model || ""}>
+                    {settings?.model || "No models loaded"}
+                  </option>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Context Memory (days)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="365"
+                value={settings?.context_window_days || 90}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          context_window_days: parseInt(e.target.value) || 90,
+                        }
+                      : s
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                The AI will remember messages from the last{" "}
+                {settings?.context_window_days || 90} days
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                System Prompt
+              </label>
+              <textarea
+                value={settings?.system_prompt || ""}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, system_prompt: e.target.value } : s
+                  )
+                }
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {saving ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Dashboard Password
+          </h2>
+          <div className="flex gap-3">
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={hasPassword ? "New password" : "Set password"}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              minLength={4}
+            />
+            <button
+              onClick={handlePasswordSave}
+              disabled={saving || !newPassword}
+              className="px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {hasPassword ? "Update" : "Set"}
+            </button>
+          </div>
+          {hasPassword && (
+            <p className="text-sm text-gray-500 mt-2">
+              A password is currently set
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
