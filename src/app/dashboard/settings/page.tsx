@@ -34,6 +34,82 @@ interface WhatsAppSettings {
   access_token_masked: string;
 }
 
+function TestMessageSection() {
+  const [testPhone, setTestPhone] = useState("");
+  const [testContent, setTestContent] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  async function handleTest() {
+    if (!testPhone || !testContent) return;
+    setTesting(true);
+    setTestResult(null);
+
+    try {
+      const res = await fetch("/api/webhook/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: testPhone, content: testContent }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setTestResult(`Error: ${data.error}`);
+        return;
+      }
+
+      setTestResult(`Success! AI Reply: ${data.ai_reply}`);
+    } catch {
+      setTestResult("Failed to send test message");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Test Phone Number
+        </label>
+        <input
+          type="text"
+          value={testPhone}
+          onChange={(e) => setTestPhone(e.target.value)}
+          placeholder="e.g., +1234567890"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Test Message
+        </label>
+        <input
+          type="text"
+          value={testContent}
+          onChange={(e) => setTestContent(e.target.value)}
+          placeholder="Hello"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+        />
+      </div>
+      <button
+        onClick={handleTest}
+        disabled={testing || !testPhone || !testContent}
+        className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+        {testing ? "Testing..." : "Send Test Message"}
+      </button>
+      {testResult && (
+        <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
+          {testResult}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<AISettings | null>(null);
@@ -507,6 +583,16 @@ export default function SettingsPage() {
               </div>
             )}
 
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-gray-700 mb-1">Webhook URL</p>
+              <code className="text-xs text-gray-600 break-all">
+                {typeof window !== "undefined" ? window.location.origin : "YOUR_URL"}/api/webhook
+              </code>
+              <p className="text-xs text-gray-500 mt-2">
+                Use this URL in Meta for Developers → WhatsApp → Configuration
+              </p>
+            </div>
+
             <button
               onClick={handleWhatsAppSave}
               disabled={saving}
@@ -519,6 +605,11 @@ export default function SettingsPage() {
               )}
               {saving ? "Saving..." : "Save WhatsApp Settings"}
             </button>
+
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">Test Pipeline</p>
+              <TestMessageSection />
+            </div>
           </div>
         </div>
 

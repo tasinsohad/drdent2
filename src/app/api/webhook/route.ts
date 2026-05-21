@@ -22,8 +22,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    console.log("Webhook POST received:", JSON.stringify(body, null, 2));
+    const rawBody = await request.text();
+    console.log("Webhook POST raw body:", rawBody);
+
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      console.error("Failed to parse webhook body as JSON");
+      return new NextResponse("OK", { status: 200 });
+    }
+
+    console.log("Webhook POST parsed:", JSON.stringify(body, null, 2));
 
     const entry = body.entry?.[0];
     if (!entry) {
@@ -40,6 +50,12 @@ export async function POST(request: NextRequest) {
 
     const messages = value.messages;
     const contacts = value.contacts;
+    const statuses = value.statuses;
+
+    if (statuses && statuses.length > 0) {
+      console.log("Webhook status update:", JSON.stringify(statuses));
+      return new NextResponse("OK", { status: 200 });
+    }
 
     if (!messages || messages.length === 0) {
       console.log("No messages in webhook payload");
