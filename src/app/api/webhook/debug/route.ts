@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -9,9 +9,7 @@ export async function GET(request: NextRequest) {
     .select("*")
     .single();
 
-  const appUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_APP_URL || "https://drdent2.vercel.app";
+  const appUrl = "https://drdent2.vercel.app";
 
   return NextResponse.json({
     webhook_url: `${appUrl}/api/webhook`,
