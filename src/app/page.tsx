@@ -12,10 +12,10 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/auth")
       .then((r) => r.json())
       .then((data) => {
-        setIsSetup(data.dashboard?.has_password);
+        setIsSetup(data.has_password);
       })
       .catch(() => setIsSetup(false));
   }, []);

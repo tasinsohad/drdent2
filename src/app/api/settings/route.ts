@@ -53,17 +53,23 @@ export async function PATCH(request: NextRequest) {
   const supabase = getSupabaseServer();
 
   if (body.ai) {
+    const aiUpdate: any = {
+      id: 1,
+      provider: body.ai.provider,
+      base_url: body.ai.base_url || null,
+      model: body.ai.model,
+      system_prompt: body.ai.system_prompt,
+      context_window_days: body.ai.context_window_days,
+    };
+
+    // Only update API key if it's provided and not the masked version
+    if (body.ai.api_key && !body.ai.api_key.includes("...")) {
+      aiUpdate.api_key = body.ai.api_key;
+    }
+
     const { data, error } = await supabase
       .from("ai_settings")
-      .upsert({
-        id: 1,
-        provider: body.ai.provider,
-        api_key: body.ai.api_key,
-        base_url: body.ai.base_url || null,
-        model: body.ai.model,
-        system_prompt: body.ai.system_prompt,
-        context_window_days: body.ai.context_window_days,
-      })
+      .upsert(aiUpdate)
       .select()
       .single();
 
@@ -90,14 +96,20 @@ export async function PATCH(request: NextRequest) {
   }
 
   if (body.whatsapp) {
+    const whatsappUpdate: any = {
+      id: 1,
+      phone_number_id: body.whatsapp.phone_number_id,
+      webhook_verify_token: body.whatsapp.webhook_verify_token,
+    };
+
+    // Only update WhatsApp access token if it's provided and not masked
+    if (body.whatsapp.access_token && !body.whatsapp.access_token.startsWith("••••••••")) {
+      whatsappUpdate.access_token = body.whatsapp.access_token;
+    }
+
     const { data, error } = await supabase
       .from("whatsapp_settings")
-      .upsert({
-        id: 1,
-        access_token: body.whatsapp.access_token,
-        phone_number_id: body.whatsapp.phone_number_id,
-        webhook_verify_token: body.whatsapp.webhook_verify_token,
-      })
+      .upsert(whatsappUpdate)
       .select()
       .single();
 

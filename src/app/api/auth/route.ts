@@ -54,3 +54,17 @@ export async function POST(request: NextRequest) {
   await setAuthCookie();
   return NextResponse.json({ success: true });
 }
+
+export async function GET() {
+  const supabase = getSupabaseServer();
+
+  const { data: settings } = await supabase
+    .from("dashboard_settings")
+    .select("password_hash")
+    .single();
+
+  return NextResponse.json({
+    has_password: !!settings?.password_hash,
+  });
+}
+

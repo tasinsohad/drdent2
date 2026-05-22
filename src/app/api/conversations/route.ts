@@ -10,6 +10,8 @@ export async function GET() {
       *,
       last_message:messages(content, role, created_at)
     `)
+    .order("created_at", { referencedTable: "messages", ascending: false })
+    .limit(1, { referencedTable: "messages" })
     .order("updated_at", { ascending: false });
 
   if (error) {
